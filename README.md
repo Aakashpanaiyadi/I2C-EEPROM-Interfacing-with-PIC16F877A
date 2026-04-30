@@ -18,3 +18,6 @@ This project implements I2C communication using the PIC16F877A microcontroller i
 * Data (0x55) is successfully written to a specific EEPROM memory location
 * The same data is read back correctly using I2C read operation
 * Communication verified using I2C debugger sequence (Start → Address → Data → Stop)
+
+### Simulation Output
+<img width="1407" height="717" alt="Screenshot 2026-04-30 192441" src="https://github.com/user-attachments/assets/92e5d39a-efcc-4b04-b789-83db6b2f95c1" />
