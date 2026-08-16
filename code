@@ -1,73 +1,170 @@
 #include<pic.h>
-void delay_ms(unsigned int ms){
-unsigned int i,j;
-for(i=0;i<ms;i++)
-for(j=0;j<1275;j++);
+
+
+/* Simple software delay */
+void delay_ms(unsigned int ms)
+{
+    unsigned int i,j;
+
+    for(i=0;i<ms;i++)
+        for(j=0;j<1275;j++);
 }
-void i2c_init(){
-TRISC3=1;
-TRISC4=1;
-SSPCON=0x28;
-SSPCON2=0x00;
-SSPADD=49;
-SSPSTAT=0x00;
+
+
+/* Configure PIC as I2C master */
+void i2c_init()
+{
+    TRISC3=1;       // SCL as input
+    TRISC4=1;       // SDA as input
+
+    SSPCON=0x28;    // Enable MSSP in I2C master mode
+    SSPCON2=0x00;
+
+    SSPADD=49;      // I2C clock setting
+    SSPSTAT=0x00;
 }
-void i2c_wait(){
-while((SSPCON2&0x1F)||(SSPSTAT&0x04));
+
+
+/* Wait until I2C bus is free */
+void i2c_wait()
+{
+    while((SSPCON2&0x1F)||(SSPSTAT&0x04));
 }
-void i2c_start(){
-i2c_wait();
-SEN=1;
+
+
+/* Generate I2C START condition */
+void i2c_start()
+{
+    i2c_wait();
+    SEN=1;
 }
-void i2c_restart(){
-i2c_wait();
-RSEN=1;
+
+
+/* Generate repeated START condition */
+void i2c_restart()
+{
+    i2c_wait();
+    RSEN=1;
 }
-void i2c_stop(){
-i2c_wait();
-PEN=1;
+
+
+/* Generate I2C STOP condition */
+void i2c_stop()
+{
+    i2c_wait();
+    PEN=1;
 }
-void i2c_write(unsigned char data){
-i2c_wait();
-SSPBUF=data;
+
+
+/* Send one byte through I2C */
+void i2c_write(unsigned char data)
+{
+    i2c_wait();
+    SSPBUF=data;
 }
-unsigned char i2c_read(unsigned char ack){
-unsigned char data;
-i2c_wait();
-RCEN=1;
-i2c_wait();
-data=SSPBUF;
-i2c_wait();
-if(ack)
-ACKDT=0;
-else
-ACKDT=1;
-ACKEN=1;
-return data;
+
+
+/* Read one byte from I2C device */
+unsigned char i2c_read(unsigned char ack)
+{
+    unsigned char data;
+
+    i2c_wait();
+
+    /* Enable receive mode */
+    RCEN=1;
+
+    i2c_wait();
+
+    data=SSPBUF;
+
+    i2c_wait();
+
+
+    /*
+     * ACKDT = 0 -> send ACK
+     * ACKDT = 1 -> send NACK
+     */
+    if(ack)
+        ACKDT=0;
+    else
+        ACKDT=1;
+
+    ACKEN=1;
+
+    return data;
 }
-void eeprom_write(unsigned char addr,unsigned char data){
-i2c_start();
-i2c_write(0xA0);
-i2c_write(addr);
-i2c_write(data);
-i2c_stop();
-delay_ms(50);
+
+
+/* Write one byte into EEPROM */
+void eeprom_write(unsigned char addr,unsigned char data)
+{
+    i2c_start();
+
+    /* EEPROM device address + Write */
+    i2c_write(0xA0);
+
+    /* EEPROM memory address */
+    i2c_write(addr);
+
+    /* Data to be stored */
+    i2c_write(data);
+
+    i2c_stop();
+
+    /* Wait for EEPROM write cycle */
+    delay_ms(50);
 }
-unsigned char eeprom_read(unsigned char addr){
-unsigned char data;
-i2c_start();
-i2c_write(0xA0);
-i2c_write(addr);
-i2c_restart();
-i2c_write(0xA1);
-data=i2c_read(0);
-i2c_stop();
-return data;
+
+
+/* Read one byte from EEPROM */
+unsigned char eeprom_read(unsigned char addr)
+{
+    unsigned char data;
+
+    i2c_start();
+
+    /* Select EEPROM for writing address */
+    i2c_write(0xA0);
+
+    /* Send memory address */
+    i2c_write(addr);
+
+    /* Change from write to read */
+    i2c_restart();
+
+    /* EEPROM device address + Read */
+    i2c_write(0xA1);
+
+    /* Read data and send NACK after last byte */
+    data=i2c_read(0);
+
+    i2c_stop();
+
+    return data;
 }
-void main(){
-unsigned char value;
-i2c_init();
-eeprom_write(0x10,0x55);
-value=eeprom_read(0x10);
-while(1);
+
+
+void main()
+{
+    unsigned char value;
+
+    /* Initialize I2C */
+    i2c_init();
+
+
+    /*
+     * Store 0x55 at EEPROM address 0x10
+     */
+    eeprom_write(0x10,0x55);
+
+
+    /*
+     * Read back the stored value
+     */
+    value=eeprom_read(0x10);
+
+
+    /* Keep the program running */
+    while(1);
 }
